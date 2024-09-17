@@ -24,29 +24,39 @@
 #include "base.hh"
 #include "functions.hh"
 #include <ctime>
+#include "config.hh"
 
 CheatRandomizer *CheatRandomizer::mInstance = nullptr;
 
 std::string chits[] = {"Chit Activated", "Cabbage", "Giant Pizza Activated",
-					   "Beep Boop Boop Beep", "Mong"};
-
+                       "Beep Boop Boop Beep"};
 
 /*******************************************************/
 const char *__fastcall RandomizeHashesAfterCheatActivated (CText *text,
                                                            void *edx, char *key)
 {
     CheatRandomizer::GetInstance ()->RandomizeCheatHashes ();
-	
-    int chits_len = sizeof (chits) / sizeof (chits[0]);
-    const char* chit = chits[random (chits_len - 1)].c_str ();
 
-	return chit;
+    if (CheatRandomizer::m_Config.EasterEgg)
+        {
+            int         chits_len = sizeof (chits) / sizeof (chits[0]);
+            const char *chit      = chits[random (chits_len - 1)].c_str ();
+
+            return chit;
+        }
+
+    return text->Get (key);
 }
 
 /*******************************************************/
 void
 CheatRandomizer::Initialise ()
 {
+    if (!ConfigManager::ReadConfig ("CheatRandomizer",
+                                    std::pair ("EnableEasterEgg",
+                                               &m_Config.EasterEgg)))
+        return;
+
     Logger::GetLogger ()->LogMessage ("Intialised CheatRandomizer");
     RegisterHooks (
         {{HOOK_CALL, 0x43854D, (void *) &RandomizeHashesAfterCheatActivated}});
@@ -83,19 +93,19 @@ CheatRandomizer::ShouldActivate ()
 
 /*******************************************************/
 void
-CheatRandomizer::RandomizeCheatHashes()
+CheatRandomizer::RandomizeCheatHashes ()
 {
-	const int CHEAT_HASH_COUNT = 92;
-	
-	unsigned int* aCheatHashKeys = (unsigned int*) 0x8A5CC8;
-	for(int i = 0; i < CHEAT_HASH_COUNT; i++)
-	{
-		int temp = aCheatHashKeys[i];
-		int swap = random(CHEAT_HASH_COUNT-1);
-		
-		aCheatHashKeys[i] = aCheatHashKeys[swap];
-		aCheatHashKeys[swap] = temp;
-	}
+    const int CHEAT_HASH_COUNT = 92;
+
+    unsigned int *aCheatHashKeys = (unsigned int *) 0x8A5CC8;
+    for (int i = 0; i < CHEAT_HASH_COUNT; i++)
+        {
+            int temp = aCheatHashKeys[i];
+            int swap = random (CHEAT_HASH_COUNT - 1);
+
+            aCheatHashKeys[i]    = aCheatHashKeys[swap];
+            aCheatHashKeys[swap] = temp;
+        }
 }
 
 /*******************************************************/

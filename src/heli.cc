@@ -24,6 +24,7 @@
 #include "functions.hh"
 #include "base.hh"
 #include "injector/injector.hpp"
+#include "config.hh"
 
 PoliceHeliRandomizer *PoliceHeliRandomizer::mInstance = nullptr;
 
@@ -39,13 +40,25 @@ GetRandomHeliID ()
 void
 RandomizeHelisOnUnload ()
 {
+    PoliceHeliRandomizer::GetInstance ()->UnloadHelis ();
     PoliceHeliRandomizer::GetInstance ()->RandomizeHelis ();
+}
+
+/*******************************************************/
+void
+PoliceHeliRandomizer::UnloadHelis ()
+{
+    CStreaming::SetIsDeletable (mVCNHeli);
+    CStreaming::SetIsDeletable (mPoliceHeli);
 }
 
 /*******************************************************/
 void
 PoliceHeliRandomizer::Initialise ()
 {
+    if (!ConfigManager::ReadConfig ("PoliceHeliRandomizer"))
+        return;
+
     RegisterHooks ({{HOOK_CALL, 0x40B88B, (void *) &RandomizeHelisOnUnload},
                     {HOOK_CALL, 0x40B845, (void *) &TurnOnRandomization}});
 

@@ -24,6 +24,9 @@
 #include "base.hh"
 #include "functions.hh"
 #include "traffic.hh"
+#include "config.hh"
+#include "scm.hh"
+#include <array>
 
 ParkedCarRandomizer *ParkedCarRandomizer::mInstance = nullptr;
 
@@ -31,10 +34,20 @@ ParkedCarRandomizer *ParkedCarRandomizer::mInstance = nullptr;
 void
 ParkedCarRandomizer::Initialise ()
 {
-    RegisterHooks ({
-        {HOOK_CALL, 0x6F3583, (void *) &RandomizeRandomSpawn},
-        {HOOK_CALL, 0x6F35FF, (void *) &RandomizeFixedSpawn},
-    });
+    if (!ConfigManager::ReadConfig (
+            "ParkedCarRandomizer",
+            std::pair ("RandomizeFixedSpawns", &m_Config.RandomizeFixedSpawns),
+            std::pair ("RandomizeRandomSpawns",
+                       &m_Config.RandomizeRandomSpawns),
+            std::pair ("RandomizeToSameType", &m_Config.UseSameType)))
+        return;
+
+    if (m_Config.RandomizeRandomSpawns)
+        RegisterHooks ({{HOOK_CALL, 0x6F3583, (void *) &RandomizeRandomSpawn}});
+
+    if (m_Config.RandomizeFixedSpawns)
+        RegisterHooks ({{HOOK_CALL, 0x6F3EC1, (void *) &RandomizeFixedSpawn}});
+
     Logger::GetLogger ()->LogMessage ("Intialised ParkedCarRandomizer");
 }
 
@@ -59,16 +72,34 @@ ParkedCarRandomizer::GetInstance ()
 }
 
 /*******************************************************/
+int
+GetRandomCarOfType (int originalCar)
+{
+    for (auto &i : ScriptVehicleRandomizer::carTypes)
+        {
+            if (std::find (i.begin (), i.end (), originalCar) != i.end ())
+                {
+                    return GetRandomElement (i);
+                }
+        }
+    return random (400, 611);
+}
+
+/*******************************************************/
 /* This function hooks the CheckForBlockage function of a car generator
    to change the model index of a car generator. */
 /*******************************************************/
-void __fastcall RandomizeFixedSpawn (CCarGenerator *gen, void *edx,
-                                     int model_id)
+void __fastcall RandomizeFixedSpawn (CCarGenerator *gen)
 {
-    uint16_t *modelId = (uint16_t *) gen;
-    *modelId          = random (611, 400);
+    auto oldModel = gen->m_nModelId;
 
-    gen->CheckForBlockage (*modelId);
+    if (!ParkedCarRandomizer::m_Config.UseSameType)
+        gen->m_nModelId = random (400, 611);
+    else
+        gen->m_nModelId = GetRandomCarOfType (oldModel);
+
+    gen->DoInternalProcessing ();
+    gen->m_nModelId = oldModel;
 }
 
 /*******************************************************/

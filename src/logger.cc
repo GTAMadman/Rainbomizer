@@ -21,14 +21,38 @@
 #include "logger.hh"
 #include <cstdio>
 #include <ctime>
+#include "base.hh"
 
 Logger *    Logger::mInstance = nullptr;
-std::string Logger::mFileName = "log.txt";
+std::string Logger::mFileName = "";
+
+#ifndef NDEBUG
+#define RAINBOMIZER_BUILD "Debug Build: " __DATE__ " " __TIME__
+#else
+#define RAINBOMIZER_BUILD "Build v3.2"
+#endif
+
+/*******************************************************/
+std::string
+GetTimeNow ()
+{
+    time_t currentTime;
+    char   str[256];
+
+    time (&currentTime);
+
+    auto tm = std::localtime (&currentTime);
+    sprintf (str, "%02d-%02d-%04d", tm->tm_mday, tm->tm_mon + 1,
+             1900 + tm->tm_year);
+
+    return str;
+}
 
 /*******************************************************/
 Logger::Logger ()
 {
-    mFile = fopen ("log.txt", "a+");
+
+    mFile = OpenRainbomizerFile (GetTimeNow () + ".txt", "a+", "logs/");
 
     if (!mFile)
         return;
@@ -36,6 +60,7 @@ Logger::Logger ()
     // Print initial message/time
     fprintf (mFile, "===========================================\n");
     fprintf (mFile, "%d\n", (int) time (NULL));
+    fprintf (mFile, "Rainbomizer Build: %s \n", RAINBOMIZER_BUILD);
     fprintf (mFile, "===========================================\n");
 }
 
